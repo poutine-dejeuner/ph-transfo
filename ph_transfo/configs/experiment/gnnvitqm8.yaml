@@ -1,0 +1,35 @@
+# @package _global_
+# python reg_transfo/main.py experiment=example
+
+defaults:
+  - override /algorithm: gnnvit
+  - override /datamodule: qm8
+  - override /trainer: default
+
+
+debug: true
+name: qm8_gnnvit_ablation
+
+seed: ${oc.env:SLURM_PROCID,42}
+
+algorithm:
+  optimizer:
+    lr: 0.001
+  network:
+    schnet_hidden_channels: 80
+    schnet_num_filters: 80
+    schnet_num_interactions: 2
+    vit_embed_dim: 40
+    vit_depth: 2
+    vit_num_heads: 4
+
+datamodule:
+  batch_size: 64
+  data:
+    x_dim: 9
+    y_dim: 16
+
+trainer:
+  min_epochs: 1
+  max_epochs: 1000
+  gradient_clip_val: 0.5

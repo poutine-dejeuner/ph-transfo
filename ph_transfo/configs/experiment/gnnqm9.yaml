@@ -1,0 +1,28 @@
+# @package _global_
+# python reg_transfo/main.py experiment=gnnqm9
+
+defaults:
+  - override /algorithm: schnet
+  - override /datamodule: qm9
+  - override /trainer: default
+
+name: qm9_gnn
+
+seed: ${oc.env:SLURM_PROCID,42}
+
+algorithm:
+  lr: 1e-4
+  weight_decay: 1e-4
+  hidden_channels: 192
+  num_filters: 192
+  num_interactions: 3
+
+datamodule:
+  batch_size: 64
+  data:
+    x_dim: 9
+    y_dim: 12
+
+trainer:
+  min_epochs: 1
+  max_epochs: 1000

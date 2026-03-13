@@ -1,0 +1,13 @@
+# Changes here will be overwritten by Copier
+_commit: v0.0.4
+_src_path: gh:mila-iqia/ResearchTemplate
+examples_to_include:
+- image_classifier
+github_user: poutine-dejeuner
+module_name: reg_transfo
+project_description: transformer regularized with manifold matching
+project_name: reg_transfo
+python_version: '3.12'
+user_email: vincentmillions@gmail.com
+user_name: Vincent Létourneau
+recorded_setup: true

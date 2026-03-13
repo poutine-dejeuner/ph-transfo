@@ -1,0 +1,34 @@
+# @package _global_
+# python reg_transfo/main.py experiment=gnnvitqm7_frozen schnet_checkpoint=path/to/schnet.ckpt
+
+defaults:
+  - override /algorithm: gnnvit_frozen
+  - override /datamodule: qm7
+  - override /trainer: default
+
+name: qm7_gnnvit_frozen
+
+seed: ${oc.env:SLURM_PROCID,42}
+
+algorithm:
+  schnet_checkpoint: /home/vincent/repos/topo-augment/reg-transfo/logs/qm7_gnn/runs/2026-03-03/12-30-02/checkpoints/last.ckpt
+  optimizer:
+    lr: 0.001
+  network:
+    schnet_hidden_channels: 48
+    schnet_num_filters: 48
+    schnet_num_interactions: 2
+    vit_embed_dim: 24
+    vit_depth: 1
+    vit_num_heads: 4
+
+datamodule:
+  batch_size: 64
+  data:
+    x_dim: 9
+    y_dim: 1
+
+trainer:
+  min_epochs: 1
+  max_epochs: 1000
+  gradient_clip_val: 0.5

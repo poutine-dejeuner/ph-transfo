@@ -1,0 +1,28 @@
+_target_: reg_transfo.algorithms.networks.topo_gnn_transformer.TopoGraphTransformer
+
+# Input/output dimensions
+input_dim: ${instance_attr:datamodule.x_dim}
+output_dim: ${instance_attr:datamodule.y_dim}
+
+# HParams configuration (embedded directly or via nested config)
+hparams:
+  # Transformer architecture
+  hidden_dim: 64
+  num_heads: 4
+  num_transformer_layers: 3
+  ff_mult: 2
+  dropout: 0.1
+
+  # Topology layer settings
+  num_filtrations: 4
+  filtration_hidden: 32
+  coord_funs:
+    triangle: 4
+    line: 4
+  topo_residual_bn: true
+  share_filtration_parameters: true
+  apply_tanh: false
+  topo_every_n_layers: 1
+
+  # Pooling strategy
+  pooling: add

@@ -1,0 +1,21 @@
+_target_: reg_transfo.algorithms.networks.gnnvit.GNNViTNetwork
+
+# SchNet parameters
+schnet_hidden_channels: 128
+schnet_num_filters: 128
+schnet_num_interactions: 3
+schnet_num_gaussians: 50
+schnet_cutoff: 10.0
+
+# Vision Transformer parameters
+vit_img_size: 32
+vit_patch_size: 4
+vit_embed_dim: 128
+vit_depth: 4
+vit_num_heads: 4
+vit_drop_rate: 0.1
+vit_attn_drop_rate: 0.1
+
+# Fusion parameters
+fusion_hidden_dim: 64
+output_dim: ${instance_attr:datamodule.y_dim}

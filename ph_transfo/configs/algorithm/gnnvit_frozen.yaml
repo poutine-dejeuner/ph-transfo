@@ -1,0 +1,22 @@
+defaults:
+  - network: gnnvit
+  - optimizer: Adam
+  - _self_
+
+_target_: reg_transfo.algorithms.gnnvit_frozen.GNNViTFrozenGNN
+_partial_: true
+_recursive_: false
+
+schnet_checkpoint: ???  # Must be provided: path to pretrained SchNet .ckpt
+
+optimizer:
+  lr: 0.001
+  weight_decay: 0.001
+
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.5
+  patience: 50
+  min_lr: 1e-6

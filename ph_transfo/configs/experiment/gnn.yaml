@@ -1,0 +1,27 @@
+# @package _global_
+
+# To execute this experiment, use:
+# python reg_transfo/main.py experiment=molecule_gnn
+
+defaults:
+  - override /algorithm: schnet
+  - override /datamodule: cremp
+  - override /trainer: default
+
+name: molecule_gnn
+
+seed: 42
+
+algorithm:
+  lr: 1e-4
+  weight_decay: 1e-4
+
+datamodule:
+  batch_size: 32
+  num_workers: 4
+  # mol_dir: /media/vincent/disque_local/Downloads/pickle/
+
+trainer:
+  callbacks:
+    rich_progress_bar: null
+    throughput: null

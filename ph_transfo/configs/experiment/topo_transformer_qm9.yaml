@@ -1,0 +1,53 @@
+# @package _global_
+
+# TopoGraphTransformer experiment on molecular datasets
+# Execute with: python reg_transfo/main.py experiment=topo_transformer_qm9
+
+defaults:
+  - override /algorithm: topo_transformer
+  - override /datamodule: qm9
+  - override /trainer: default
+
+name: topo_transformer_qm9
+
+seed: 42
+
+algorithm:
+  optimizer:
+    lr: 1e-3
+    weight_decay: 1e-4
+  lr_scheduler:
+    factor: 0.5
+    patience: 20
+    min_lr: 1e-6
+
+  network:
+    hidden_dim: 64
+    num_heads: 4
+    num_transformer_layers: 3
+    ff_mult: 2
+    dropout: 0.1
+    num_filtrations: 4
+    filtration_hidden: 32
+    coord_funs:
+      triangle: 4
+      line: 4
+    topo_residual_bn: true
+    share_filtration_parameters: true
+    apply_tanh: false
+    topo_every_n_layers: 1
+    pooling: add
+
+datamodule:
+  batch_size: 32
+  num_workers: 4
+  data:
+    x_dim: 9
+    y_dim: 12
+
+trainer:
+  min_epochs: 1
+  max_epochs: 500
+  callbacks:
+    rich_progress_bar: null
+    throughput: null

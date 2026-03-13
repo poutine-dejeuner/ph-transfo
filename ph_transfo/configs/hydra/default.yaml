@@ -1,0 +1,39 @@
+# https://hydra.cc/docs/configure_hydra/intro/
+
+# Copied from https://github.com/ashleve/lightning-hydra-template/blob/9e7089ce70dac66096576c6596e966d4c38cbdce/configs/hydra/default.yaml
+
+# enable color logging
+defaults:
+  - override hydra_logging: colorlog
+  - override job_logging: colorlog
+
+run:
+  # output directory, generated dynamically on each run
+  # If resuming from checkpoint, use its run directory instead
+  dir: ${run_dir_from_ckpt:${ckpt_path},logs/${name}/runs/${now:%Y-%m-%d}/${now:%H-%M-%S}}
+sweep:
+  dir: logs/${name}/multiruns/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  subdir: ${hydra.job.num}
+
+job_logging:
+  handlers:
+    rich:
+      class: rich.logging.RichHandler
+      markup: True
+      rich_tracebacks: True
+  root:
+    handlers: [rich]
+  disable_existing_loggers: False
+  loggers:
+    lightning.fabric.utilities.cloud_io:
+      level: WARNING
+
+hydra_logging:
+  handlers:
+    rich:
+      class: rich.logging.RichHandler
+      markup: True
+      rich_tracebacks: True
+  root:
+    handlers: [rich]
+  disable_existing_loggers: False

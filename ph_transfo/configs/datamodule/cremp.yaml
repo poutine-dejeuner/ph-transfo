@@ -1,0 +1,6 @@
+_target_: reg_transfo.datamodules.cremp.CREMPDataModule
+mol_dir: /media/vincent/disque_local/Downloads/pickle/
+batch_size: 32
+num_workers: 4
+data:
+  y_dim: 1
