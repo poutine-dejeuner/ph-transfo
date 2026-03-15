@@ -1,0 +1,9 @@
+defaults:
+  - model_summary.yaml
+  - rich_progress_bar.yaml
+
+lr_monitor:
+  _target_: lightning.pytorch.callbacks.LearningRateMonitor
+
+device_utilisation:
+  _target_: lightning.pytorch.callbacks.DeviceStatsMonitor

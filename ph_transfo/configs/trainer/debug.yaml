@@ -1,0 +1,26 @@
+defaults:
+  - logger: wandb
+  - callbacks: none
+
+_target_: lightning.Trainer
+accelerator: auto
+strategy: auto
+devices: 1
+
+deterministic: true
+
+fast_dev_run: true
+
+min_epochs: 1
+max_epochs: 1
+
+profiler: simple
+overfit_batches: 0
+limit_val_batches: 1.0
+limit_test_batches: 1.0
+enable_checkpointing: false
+default_root_dir: ${hydra:runtime.output_dir}
+
+detect_anomaly: true
+
+gradient_clip_val: 0.5

@@ -1,0 +1,24 @@
+# @package _global_
+# Quick test with small dataset
+
+defaults:
+  - override /algorithm: gnnvit
+  - override /datamodule: qm9
+  - override /trainer: debug
+
+debug: true
+name: qm9_gnnvit_test
+seed: 42
+
+algorithm:
+  optimizer:
+    lr: 0.002
+
+datamodule:
+  batch_size: 4
+  num_workers: 0  # Disable workers for debugging
+
+trainer:
+  max_epochs: 1
+  limit_train_batches: 1
+  limit_val_batches: 1

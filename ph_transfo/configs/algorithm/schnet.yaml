@@ -1,0 +1,11 @@
+_target_: reg_transfo.algorithms.schnet.MoleculeSchNet
+lr: 1e-3
+weight_decay: 1e-5
+out_channels: ${instance_attr:datamodule.y_dim}
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.5
+  patience: 50
+  min_lr: 1e-6

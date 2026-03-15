@@ -1,0 +1,9 @@
+# Loss and metrics configuration (used by molecule algorithms)
+loss:
+  _target_: torch.nn.MSELoss
+
+metrics:
+  mae:
+    _target_: torch.nn.L1Loss
+  r2-score:
+    _target_: torchmetrics.regression.R2Score
