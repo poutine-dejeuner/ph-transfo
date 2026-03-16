@@ -32,10 +32,8 @@ for exp in "${EXPERIMENTS[@]}"; do
     CURRENT=$((CURRENT + 1))
     echo -e "${GREEN}[$CURRENT/$TOTAL]${NC} Running: $exp"
     echo "Command: python reg_transfo/main.py experiment=$exp"
-    echo ""
 
     python reg_transfo/main.py experiment=$exp
-
     echo -e "${GREEN}✓ Completed: $exp${NC}"
     echo ""
 done

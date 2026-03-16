@@ -3,11 +3,6 @@
 # Automatically finds the largest batch size that fits into memory before training.
 batch_size_finder:
   _target_: lightning.pytorch.callbacks.BatchSizeFinder
-  # steps_per_trial=50: expose the finder to many batches so worst-case molecule
-  # sizes (22 atoms vs avg 15) and backprop memory are properly accounted for.
-  # Without this, the finder calibrates on a few small-molecule batches then OOMs
-  # during actual training when large-molecule batches appear.
   steps_per_trial: 50
-  # max_val: cap to avoid finding a batch size that fits forward-pass only.
-  # Backward pass + optimizer state typically needs 2-3x the forward memory.
-  max_val: 256
+  init_val: 2
+  max_trials: 7  # power mode: 2 × 2^7 = 256 max batch size

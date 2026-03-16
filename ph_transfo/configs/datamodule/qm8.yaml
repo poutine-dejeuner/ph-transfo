@@ -1,9 +1,9 @@
-_target_: reg_transfo.datamodules.dchem.QM8DataModule
-batch_size: 32
+_target_: ph_transfo.datamodules.dchem.QM8DataModule
 num_workers: 2
 data_type: graph
 splitter: random
 pin_memory: true
 shuffle: true
 data:
-  y_dim: 12
+  x_dim: 8
+  y_dim: 16

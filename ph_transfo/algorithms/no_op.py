@@ -4,8 +4,7 @@ import lightning
 import torch
 from lightning import Callback, LightningModule
 
-from reg_transfo.algorithms.callbacks.samples_per_second import MeasureSamplesPerSecondCallback
-
+from ph_transfo.algorithms.callbacks.samples_per_second import MeasureSamplesPerSecondCallback
 
 class NoOp(LightningModule):
     """Algorithm that does no learning and is used to benchmark the dataloading speed."""

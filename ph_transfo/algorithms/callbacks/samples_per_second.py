@@ -10,8 +10,7 @@ from torch import Tensor
 from torch.optim.optimizer import Optimizer
 from typing_extensions import TypeVar
 
-from reg_transfo.utils.typing_utils import NestedMapping, is_sequence_of
-
+from ph_transfo.utils.typing_utils import NestedMapping, is_sequence_of
 BatchType = TypeVar(
     "BatchType",
     bound=torch.Tensor | tuple[torch.Tensor, ...] | NestedMapping[str, torch.Tensor],

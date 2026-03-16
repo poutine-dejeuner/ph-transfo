@@ -1,13 +1,13 @@
 # @package _global_
 
-# TopoGraphTransformer experiment on molecular datasets
-# Execute with: python ph_transfo/main.py experiment=topo_transformer_qm9
+# TopoGraphTransformer experiment on QM8 (~22k molecules)
+# Execute with: python ph_transfo/main.py experiment=topo_transformer_qm8
 defaults:
   - override /algorithm: topo_transformer
-  - override /datamodule: qm9
+  - override /datamodule: qm8
   - override /trainer: default
 
-name: topo_transformer_qm9
+name: topo_transformer_qm8
 
 seed: 42
 
@@ -42,9 +42,6 @@ algorithm:
 datamodule:
   batch_size: 32
   num_workers: 4
-  data:
-    x_dim: 8
-    y_dim: 12
 
 trainer:
   min_epochs: 1

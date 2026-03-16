@@ -20,8 +20,7 @@ trainer:
   logger:
     wandb:
       _target_: lightning.pytorch.loggers.wandb.WandbLogger
-      reg_transfo: "ResearchTemplate"
-      # TODO: Use the Orion trial name?
+      ph_transfo: "ResearchTemplate"
       # name: ${oc.env:SLURM_JOB_ID}_${oc.env:SLURM_ARRAY_TASK_ID,0}_${oc.env:SLURM_PROCID}
       save_dir: "${hydra:runtime.output_dir}"
       offline: False # set True to store all logs only locally

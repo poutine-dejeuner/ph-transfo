@@ -1,5 +1,5 @@
 # Note: This configuration should be run in combination with an algorithm. For example like this:
-# `python reg_transfo/main.py algorithm=example datamodule=cifar10 trainer=overfit_one_batch`
+# `python ph_transfo/main.py algorithm=example datamodule=cifar10 trainer=overfit_one_batch`
 #
 defaults:
   - default

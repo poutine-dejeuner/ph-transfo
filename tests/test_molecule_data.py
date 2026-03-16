@@ -15,20 +15,16 @@ from lightning.pytorch.trainer.states import RunningStage
 from tensor_regression.fixture import TensorRegressionFixture
 from torch.utils.data import DataLoader
 
-from reg_transfo.algorithms.lightning_module_tests import convert_list_and_tuples_to_dicts
-from reg_transfo.conftest import algorithm_config
-from reg_transfo.datamodules.molecule_data import (
-    MoleculeDataModule,
+from ph_transfo.algorithms.lightning_module_tests import convert_list_and_tuples_to_dicts
+from ph_transfo.datamodules.molecule_data import (
     MoleculePersistenceImageDataset,
 )
-from reg_transfo.utils.testutils import IN_GITHUB_CLOUD_CI
-
+from ph_transfo.utils.testutils import IN_GITHUB_CLOUD_CI
 DataModuleType = TypeVar("DataModuleType", bound=LightningDataModule)
 
 @pytest.fixture
 def mock_dataset_class():
-    with patch('reg_transfo.datamodules.molecule_data.MoleculePersistenceImageDataset') as mock:
-        yield mock
+    with patch('ph_transfo.datamodules.molecule_data.MoleculePersistenceImageDataset') as mock:
 
 @pytest.fixture
 def mock_dataset_instance(mock_dataset_class):

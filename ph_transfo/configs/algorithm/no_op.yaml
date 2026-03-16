@@ -1,2 +1,1 @@
-_target_: reg_transfo.algorithms.no_op.NoOp
-_partial_: true
+_target_: ph_transfo.algorithms.no_op.NoOp

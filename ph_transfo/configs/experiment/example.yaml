@@ -3,8 +3,7 @@
 # This is an "experiment" config, that groups together other configs into a ready-to-run example.
 
 # To execute this experiment, use:
-# python reg_transfo/main.py experiment=example
-
+# python ph_transfo/main.py experiment=example
 defaults:
   - override /algorithm: image_classifier
   - override /algorithm/network: resnet18

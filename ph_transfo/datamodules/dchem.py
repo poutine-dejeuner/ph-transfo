@@ -13,8 +13,7 @@ from rdkit import RDLogger
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 from torch_geometric.data import Batch, Data
 
-from reg_transfo.utils.env_vars import DATA_DIR, NUM_WORKERS
-
+from ph_transfo.utils.env_vars import DATA_DIR, NUM_WORKERS
 # Suppress all deepchem warnings and logging BEFORE import
 warnings.filterwarnings("ignore", category=UserWarning)
 logging.getLogger("deepchem").setLevel(logging.ERROR)
@@ -74,6 +73,7 @@ class DeepChemDataModule(LightningDataModule):
         self.val_dataset = None
         self.test_dataset = None
         self.tasks = None
+        self.x_dim = self.data.get("x_dim")
         self.y_dim = self.data.get("y_dim")
 
         self.save_hyperparameters()

@@ -3,7 +3,7 @@
 wandb:
   _target_: lightning.pytorch.loggers.wandb.WandbLogger
   entity: "topo-transfo"
-  project: gnnvit
+  project: ph_transfo
   name: ${name}
   save_dir: "."
   offline: False # set True to store all logs only locally

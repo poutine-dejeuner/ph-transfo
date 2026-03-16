@@ -31,4 +31,4 @@ lr_monitor:
 device_utilisation:
   _target_: lightning.pytorch.callbacks.DeviceStatsMonitor
 throughput:
-  # _target_: reg_transfo.algorithms.callbacks.samples_per_second.MeasureSamplesPerSecondCallback
+  # _target_: ph_transfo.algorithms.callbacks.samples_per_second.MeasureSamplesPerSecondCallback

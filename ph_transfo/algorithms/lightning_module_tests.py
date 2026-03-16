@@ -1,7 +1,6 @@
 """Suite of tests for an a `LightningModule`.
 
-See the [reg_transfo.algorithms.image_classifier_test][] module for an example of how to use this.
-"""
+See the [ph_transfo.algorithms.image_classifier_test][] module for an example of how to use this.
 
 from __future__ import annotations
 
@@ -20,12 +19,9 @@ from lightning import LightningModule
 from omegaconf import DictConfig
 from tensor_regression import TensorRegressionFixture
 
-from reg_transfo.configs.config import Config
-from reg_transfo.conftest import DEFAULT_SEED
-from reg_transfo.experiment import instantiate_trainer
-from reg_transfo.main import instantiate_algorithm, setup_logging
-from reg_transfo.utils.hydra_utils import resolve_dictconfig
-
+from ph_transfo.configs.config import Config
+from ph_transfo.experiment import instantiate_trainer
+from ph_transfo.utils.hydra_utils import resolve_dictconfig
 logger = get_logger(__name__)
 
 LightningModuleType = TypeVar("LightningModuleType", bound=LightningModule)
@@ -38,8 +34,7 @@ class LightningModuleTests(Generic[LightningModuleType], ABC):
     Simply inherit from this class and decorate the class with the appropriate markers to get a set
     of decent unit tests that should apply to almost any LightningModule.
 
-    See the [reg_transfo.algorithms.image_classifier_test][] module for an example.
-
+    See the [ph_transfo.algorithms.image_classifier_test][] module for an example.
     Other ideas:
     - pytest-benchmark for regression tests on forward / backward pass / training step speed
     - pytest-profiling for profiling the training step? (pytorch variant?)

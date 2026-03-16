@@ -3,8 +3,7 @@ defaults:
   - optimizer: Adam
   - _self_
 
-_target_: reg_transfo.algorithms.basealgo.BaseAlgorithm
-_partial_: true
+_target_: ph_transfo.algorithms.molecule_base.MoleculeRegressor
 _recursive_: false
 
 optimizer:

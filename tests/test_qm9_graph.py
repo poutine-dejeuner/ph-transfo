@@ -3,8 +3,7 @@
 import torch
 from torch_geometric.data import Batch
 
-from reg_transfo.datamodules.dchem import QM9DataModule
-
+from ph_transfo.datamodules.dchem import QM9DataModule
 
 def test_qm9_graph_datamodule():
     """Test QM9DataModule with graph featurizer."""

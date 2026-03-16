@@ -104,13 +104,11 @@ def _compute_ph_single_graph(
 ) -> torch.Tensor:
     """Compute H0 persistence diagram for a single graph via GUDHI.
 
-    Uses a lower-star filtration: each simplex receives the max filtration
-    value of its vertices.  Returns a per-node persistence diagram of shape
-    ``[n_nodes, 2]`` where each row is ``(birth, death)`` in filtration-value
-    space, preserving the gradient through the filtration values.
+    Returns a per-node persistence diagram of shape ``[n_nodes, 2]`` where
+    each row is ``(birth, death)`` in filtration-value space.
 
-    Follows the ``torch_topological.nn.graphs.TOGL._compute_persistent_homology``
-    implementation.
+    Uses ``persistence_pairs()`` which works for both lower-star and
+    general (e.g. distance-based Rips) filtrations.
     """
     n_nodes = len(vertices)
 
@@ -126,19 +124,32 @@ def _compute_ph_single_graph(
     st.expansion(2)
     st.persistence()
 
-    generators = st.lower_star_persistence_generators()
-    generators_regular = generators[0]
-
     # Default: every node paired with itself (trivial persistence)
     persistence_diagram = torch.stack((f_vertices, f_vertices), dim=1)
 
-    if len(generators_regular) > 0 and len(generators_regular[0]) > 0:
-        gen0 = torch.as_tensor(generators_regular[0]) - offset
-        gen0 = gen0.sort(dim=0, stable=True)[0]
-        # Map generators back to filtration values (preserves gradients)
-        persistence_diagram[gen0[:, 0], 1] = f_vertices[gen0[:, 1]]
+    for pair in st.persistence_pairs():
+        birth_simplex, death_simplex = pair
+        # H0 pairs: birth is a vertex [v], death is an edge [u, w]
+        if len(birth_simplex) == 1 and len(death_simplex) == 2:
+            birth_v = birth_simplex[0] - offset
+            # Death edge: take the vertex with the higher filtration value
+            d0 = death_simplex[0] - offset
+            d1 = death_simplex[1] - offset
+            if 0 <= birth_v < n_nodes and 0 <= d0 < n_nodes and 0 <= d1 < n_nodes:
+                death_v = d0 if f_vertices[d0] >= f_vertices[d1] else d1
+                persistence_diagram[birth_v, 1] = f_edges[
+                    _find_edge_idx(edges, death_simplex[0], death_simplex[1])
+                ] if f_edges is not None else f_vertices[death_v]
 
     return persistence_diagram
+
+
+def _find_edge_idx(edges: torch.Tensor, u: int, v: int) -> int:
+    """Find the index of edge (u, v) or (v, u) in the edge list."""
+    for i, (eu, ev) in enumerate(edges.tolist()):
+        if (eu == u and ev == v) or (eu == v and ev == u):
+            return i
+    return 0
 
 
 # ---------------------------------------------------------------------------
@@ -150,9 +161,10 @@ class TopologyLayer(nn.Module):
     """Compute per-node topological features via learned filtrations and PH.
 
     1. An MLP maps node features → ``num_filtrations`` scalar filtration values.
-    2. GUDHI computes H0 persistence diagrams (lower-star filtration).
-    3. Learnable coordinate functions map each (birth, death) pair to features.
-    4. Results are combined with input via residual + BatchNorm or concat + linear.
+    2. (Optional) Distance-based Rips filtrations from 3D coordinates.
+    3. GUDHI computes H0 persistence diagrams (lower-star filtration).
+    4. Learnable coordinate functions map each (birth, death) pair to features.
+    5. Results are combined with input via residual + BatchNorm or concat + linear.
     """
 
     def __init__(
@@ -160,6 +172,7 @@ class TopologyLayer(nn.Module):
         features_in: int,
         features_out: int,
         num_filtrations: int = 4,
+        num_dist_filtrations: int = 0,
         filtration_hidden: int = 32,
         coord_funs: dict[str, int] | None = None,
         residual_and_bn: bool = True,
@@ -171,6 +184,8 @@ class TopologyLayer(nn.Module):
             coord_funs = {"triangle": 4, "line": 4}
 
         self.num_filtrations = num_filtrations
+        self.num_dist_filtrations = num_dist_filtrations
+        self.total_filtrations = num_filtrations + num_dist_filtrations
         self.residual_and_bn = residual_and_bn
 
         total_coord = sum(coord_funs.values())
@@ -181,7 +196,7 @@ class TopologyLayer(nn.Module):
             [COORD_TRANSFORMS[name](dim) for name, dim in coord_funs.items()]
         )
 
-        # Filtration MLP
+        # Filtration MLP (for learned filtrations)
         act = nn.Tanh() if apply_tanh else nn.Identity()
         if share_filtration_parameters:
             self.filtration = nn.Sequential(
@@ -204,8 +219,14 @@ class TopologyLayer(nn.Module):
             )
         self.share_filtration = share_filtration_parameters
 
-        # Output projection
-        topo_dim = num_filtrations * total_coord
+        # Learnable log-scales for distance filtrations (different "zoom levels")
+        if num_dist_filtrations > 0:
+            self.dist_log_scales = nn.Parameter(
+                torch.linspace(-1.0, 1.0, num_dist_filtrations)
+            )
+
+        # Output projection (accounts for all filtrations)
+        topo_dim = self.total_filtrations * total_coord
         if residual_and_bn:
             self.out = nn.Linear(topo_dim, features_out)
             self.bn = nn.BatchNorm1d(features_out)
@@ -229,16 +250,30 @@ class TopologyLayer(nn.Module):
         vertex_slices: torch.Tensor,
         edge_slices: torch.Tensor,
         n_nodes: int,
+        pos: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Compute persistence diagrams for all filtrations and all graphs.
 
-        Returns a tensor of shape ``[num_filtrations, n_nodes, 2]``.
+        Returns a tensor of shape ``[total_filtrations, n_nodes, 2]``.
         """
-        filtered_v = self._filtration_values(x)  # [N, F]
+        # Learned filtrations
+        filtered_v = self._filtration_values(x)  # [N, num_filtrations]
         filtered_e, _ = torch.max(
             torch.stack([filtered_v[edge_index[0]], filtered_v[edge_index[1]]]),
             dim=0,
-        )  # [E, F]
+        )  # [E, num_filtrations]
+
+        # Distance filtrations (Rips-like): vertex=0, edge=dist*scale
+        if self.num_dist_filtrations > 0 and pos is not None:
+            edge_dists = torch.norm(
+                pos[edge_index[0]] - pos[edge_index[1]], dim=1
+            )  # [E]
+            scales = torch.exp(self.dist_log_scales)  # [D]
+            dist_fv = torch.zeros(n_nodes, self.num_dist_filtrations, device=x.device)
+            dist_fe = edge_dists.unsqueeze(1) * scales.unsqueeze(0)  # [E, D]
+
+            filtered_v = torch.cat([filtered_v, dist_fv], dim=1)
+            filtered_e = torch.cat([filtered_e, dist_fe], dim=1)
 
         # Move to CPU for GUDHI (keeps gradient-carrying tensors on device)
         fv_cpu = filtered_v.cpu()
@@ -248,10 +283,10 @@ class TopologyLayer(nn.Module):
         vertex_index = torch.arange(n_nodes, dtype=torch.int)
 
         persistence_diagrams = torch.empty(
-            (self.num_filtrations, n_nodes, 2), dtype=torch.float
+            (self.total_filtrations, n_nodes, 2), dtype=torch.float
         )
 
-        for filt_idx in range(self.num_filtrations):
+        for filt_idx in range(self.total_filtrations):
             for (vi, vj), (ei, ej) in zip(
                 pairwise(vertex_slices.tolist()),
                 pairwise(edge_slices.tolist()),
@@ -278,6 +313,7 @@ class TopologyLayer(nn.Module):
         vertex_slices: torch.Tensor,
         edge_slices: torch.Tensor,
         batch_index: torch.Tensor,
+        pos: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         Args:
@@ -286,20 +322,21 @@ class TopologyLayer(nn.Module):
             vertex_slices: ``[num_graphs + 1]``.
             edge_slices: ``[num_graphs + 1]``.
             batch_index: ``[N]`` graph membership.
+            pos: Node 3D coordinates ``[N, 3]`` (optional, for distance filtrations).
 
         Returns:
             Updated node features ``[N, features_out]``.
         """
         n_nodes = x.size(0)
         ph = self._compute_persistence_diagrams(
-            x, edge_index, vertex_slices, edge_slices, n_nodes
-        )  # [F, N, 2]
+            x, edge_index, vertex_slices, edge_slices, n_nodes, pos=pos,
+        )  # [total_filtrations, N, 2]
 
         # Coordinate activations per filtration, concatenated
         coord_acts = torch.cat(
-            [self._coord_fun(ph[f]) for f in range(self.num_filtrations)],
+            [self._coord_fun(ph[f]) for f in range(self.total_filtrations)],
             dim=1,
-        )  # [N, F * total_coord]
+        )  # [N, total_filtrations * total_coord]
 
         if self.residual_and_bn:
             h = self.bn(self.out(coord_acts))
@@ -401,6 +438,7 @@ class TopoGraphTransformerHParams:
 
     # Topology layer
     num_filtrations: int = 4
+    num_dist_filtrations: int = 4
     filtration_hidden: int = 32
     coord_funs: dict[str, int] = field(default_factory=lambda: {"triangle": 4, "line": 4})
     topo_residual_bn: bool = True
@@ -457,6 +495,7 @@ class TopoGraphTransformer(nn.Module):
                         features_in=h,
                         features_out=h,
                         num_filtrations=hparams.num_filtrations,
+                        num_dist_filtrations=hparams.num_dist_filtrations,
                         filtration_hidden=hparams.filtration_hidden,
                         coord_funs=hparams.coord_funs,
                         residual_and_bn=hparams.topo_residual_bn,
@@ -489,6 +528,7 @@ class TopoGraphTransformer(nn.Module):
         x: torch.Tensor = batch.x
         edge_index: torch.Tensor = batch.edge_index
         batch_index: torch.Tensor = batch.batch
+        pos: torch.Tensor | None = getattr(batch, "pos", None)
 
         vertex_slices = self._get_slices(batch, "x")
         edge_slices = self._get_slices(batch, "edge_index")
@@ -498,7 +538,7 @@ class TopoGraphTransformer(nn.Module):
         for transformer_block, topo_layer in zip(self.transformer_blocks, self.topo_layers):
             x = transformer_block(x, batch_index)
             if topo_layer is not None:
-                x = topo_layer(x, edge_index, vertex_slices, edge_slices, batch_index)
+                x = topo_layer(x, edge_index, vertex_slices, edge_slices, batch_index, pos=pos)
 
         x = self.final_norm(x)
         x = self.pool(x, batch_index)

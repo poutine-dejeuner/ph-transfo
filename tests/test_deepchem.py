@@ -2,8 +2,7 @@
 
 import pytest
 
-from reg_transfo.datamodules.dchem import (
-    PDBbindDataModule,
+from ph_transfo.datamodules.dchem import (
     QM7DataModule,
     QM8DataModule,
     QM9DataModule,

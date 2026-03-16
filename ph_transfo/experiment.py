@@ -18,7 +18,7 @@ import lightning
 import rich
 from omegaconf import DictConfig
 
-from reg_transfo.configs.config import Config
+from ph_transfo.configs.config import Config
 
 logger = getLogger(__name__)
 

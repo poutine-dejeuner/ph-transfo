@@ -10,11 +10,10 @@ from lightning.pytorch.core import LightningModule
 from torch import Tensor
 from torch.optim.optimizer import Optimizer
 
-from reg_transfo.algorithms.callbacks.classification_metrics import ClassificationMetricsCallback
-from reg_transfo.datamodules.image_classification.image_classification import (
-    ImageClassificationDataModule,
-)
-from reg_transfo.utils.typing_utils import HydraConfigFor
+from lightning import LightningDataModule
+
+from ph_transfo.algorithms.callbacks.classification_metrics import ClassificationMetricsCallback
+from ph_transfo.utils.typing_utils import HydraConfigFor
 
 logger = getLogger(__name__)
 
@@ -24,7 +23,7 @@ class BaseAlgorithm(LightningModule, ABC):
 
     def __init__(
         self,
-        datamodule: ImageClassificationDataModule,
+        datamodule: LightningDataModule,
         network: HydraConfigFor[torch.nn.Module],
         optimizer: HydraConfigFor[functools.partial[Optimizer]],
         init_seed: int = 42,

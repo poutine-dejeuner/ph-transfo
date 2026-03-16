@@ -1,5 +1,4 @@
-_target_: reg_transfo.algorithms.schnet.MoleculeSchNet
-lr: 1e-3
+_target_: ph_transfo.algorithms.schnet.MoleculeSchNet
 weight_decay: 1e-5
 out_channels: ${instance_attr:datamodule.y_dim}
 lr_scheduler:

@@ -1,5 +1,4 @@
-_target_: reg_transfo.algorithms.networks.topo_gnn_transformer.TopoGraphTransformer
-
+_target_: ph_transfo.algorithms.networks.topo_transformer.TopoGraphTransformer
 # Input/output dimensions
 input_dim: ${instance_attr:datamodule.x_dim}
 output_dim: ${instance_attr:datamodule.y_dim}

@@ -14,9 +14,25 @@ OmegaConf.register_new_resolver("constant", get_constant)
 OmegaConf.register_new_resolver("eval", eval)
 
 
-def add_configs_to_hydra_store():
-    # from reg_transfo.utils.remote_launcher_plugin import RemoteSlurmQueueConf
+def _run_dir_from_ckpt(ckpt_path: str | None, default_dir: str) -> str:
+    """If resuming from a checkpoint, reuse its run directory; otherwise use default."""
+    if ckpt_path:
+        from pathlib import Path
 
+        ckpt = Path(ckpt_path)
+        # Walk up to find the run directory (parent of the checkpoints/ folder)
+        for parent in ckpt.parents:
+            if parent.name == "checkpoints":
+                return str(parent.parent)
+        return str(ckpt.parent)
+    return default_dir
+
+
+OmegaConf.register_new_resolver("run_dir_from_ckpt", _run_dir_from_ckpt)
+
+
+def add_configs_to_hydra_store():
+    # from ph_transfo.utils.remote_launcher_plugin import RemoteSlurmQueueConf
     """Adds all configs to the Hydra Config store."""
     # ConfigStore.instance().store(
     #     group="hydra/launcher",

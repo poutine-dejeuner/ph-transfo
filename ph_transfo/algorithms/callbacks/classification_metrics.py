@@ -9,8 +9,7 @@ from lightning import LightningModule, Trainer
 from torch import Tensor
 from torchmetrics.classification import MulticlassAccuracy
 
-from reg_transfo.utils.typing_utils.protocols import ClassificationDataModule
-
+from ph_transfo.utils.typing_utils.protocols import ClassificationDataModule
 logger = get_logger(__name__)
 
 

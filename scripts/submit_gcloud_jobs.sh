@@ -42,7 +42,6 @@ for exp in "${EXPERIMENTS[@]}"; do
               ],
               "args": [
                 ". .venv/bin/activate && python -m reg_transfo.main experiment=$exp"
-              ]
             }
           }
         ],
