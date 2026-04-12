@@ -1,0 +1,40 @@
+# @package _global_
+
+# GPS Transformer baseline (no Betti augmentation) on PCQM4Mv2
+# Execute with: python ph_transfo/main.py experiment=gps_baseline_pcqm4mv2
+defaults:
+  - override /algorithm: gps_betti
+  - override /datamodule: pcqm4mv2
+  - override /trainer: default
+
+name: gps_baseline_pcqm4mv2
+
+seed: 42
+
+algorithm:
+  optimizer:
+    lr: 1e-3
+    weight_decay: 1e-5
+  lr_scheduler:
+    factor: 0.5
+    patience: 5
+    min_lr: 1e-6
+
+  network:
+    hparams:
+      hidden_dim: 256
+      num_layers: 6
+      num_heads: 8
+      dropout: 0.1
+      attn_dropout: 0.1
+
+datamodule:
+  batch_size: 256
+  num_workers: 8
+
+trainer:
+  min_epochs: 1
+  max_epochs: 100
+  callbacks:
+    rich_progress_bar: null
+    throughput: null

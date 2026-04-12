@@ -38,7 +38,6 @@ class DeepChemDataModule(LightningDataModule):
         batch_size: int = 32,
         num_workers: int = NUM_WORKERS,
         data_type: str = "graph",
-        persistence_img_size: int = 32,
         splitter: str = "random",
         pin_memory: bool = True,
         shuffle: bool = True,
@@ -52,7 +51,6 @@ class DeepChemDataModule(LightningDataModule):
             batch_size: Batch size for dataloaders
             num_workers: Number of workers for dataloaders
             data_type: graph or vector representation (default: graph)
-            persistence_img_size: Size of the persistence image (height=width)
             splitter: Splitting method (random, scaffold, etc.)
             pin_memory: Pin memory for faster GPU transfer
             shuffle: Shuffle training data
@@ -63,7 +61,6 @@ class DeepChemDataModule(LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.data_type = data_type
-        self.persistence_img_size = persistence_img_size
         self.splitter = splitter
         self.pin_memory = pin_memory
         self.shuffle = shuffle
@@ -75,6 +72,23 @@ class DeepChemDataModule(LightningDataModule):
         self.tasks = None
         self.x_dim = self.data.get("x_dim")
         self.y_dim = self.data.get("y_dim")
+        self.betti_scales = self.data.get("betti_scales")
+
+        # Topology feature config
+        self.topo = self.data.get("topo", {})
+        self.topo_enabled = bool(self.topo)
+        self.n_curve_points = self.topo.get("n_curve_points", 20)
+        self.curve_range = tuple(self.topo.get("curve_range", [1.0, 6.0]))
+
+        # Compute topo feature dim: 2*n_curve_points (Betti curves) + 10 (persistence stats)
+        if self.topo_enabled and self.x_dim:
+            self.topo_dim = 2 * self.n_curve_points + 10
+            # topo features are NOT concatenated to x; they go in data.topo_x
+            # x_dim stays as base atom features
+        elif self.betti_scales and self.x_dim:
+            # Legacy: old betti_scales concat mode
+            self.x_dim = self.x_dim + 2 * len(self.betti_scales)
+        self.topo_dim = 2 * self.n_curve_points + 10 if self.topo_enabled else 0
 
         self.save_hyperparameters()
 
@@ -123,12 +137,16 @@ class DeepChemDataModule(LightningDataModule):
 
         train_dc, valid_dc, test_dc = datasets
 
+        topo_kwargs = {}
+        if self.topo_enabled:
+            topo_kwargs = {"topo_config": {"n_curve_points": self.n_curve_points, "curve_range": self.curve_range}}
+
         if stage == "fit" or stage is None:
-            self.train_dataset = GraphDataset(train_dc, self.ATOM_TYPES, self.persistence_img_size, cache_dir=self.data_dir / "train")
-            self.val_dataset = GraphDataset(valid_dc, self.ATOM_TYPES, self.persistence_img_size, cache_dir=self.data_dir / "val")
+            self.train_dataset = GraphDataset(train_dc, self.ATOM_TYPES, cache_dir=self.data_dir / "train", betti_scales=self.betti_scales, **topo_kwargs)
+            self.val_dataset = GraphDataset(valid_dc, self.ATOM_TYPES, cache_dir=self.data_dir / "val", betti_scales=self.betti_scales, **topo_kwargs)
 
         if stage == "test" or stage is None:
-            self.test_dataset = GraphDataset(test_dc, self.ATOM_TYPES, self.persistence_img_size, cache_dir=self.data_dir / "test")
+            self.test_dataset = GraphDataset(test_dc, self.ATOM_TYPES, cache_dir=self.data_dir / "test", betti_scales=self.betti_scales, **topo_kwargs)
 
     def _to_torch_dataset(self, dc_dataset):
         """Convert DeepChem dataset to PyTorch TensorDataset."""
@@ -175,33 +193,41 @@ class DeepChemDataModule(LightningDataModule):
 
 
 class GraphDataset(Dataset):
-    """Convert DeepChem dataset to PyTorch Geometric graph dataset with pre-computed persistence
-    images."""
+    """Convert DeepChem dataset to PyTorch Geometric graph dataset with optional
+    topology features (rich PH node features + edge filtration values)."""
 
-    def __init__(self, dc_dataset, atom_types: list[int], persistence_img_size: int = 32, cache_dir: Path | None = None):
+    def __init__(self, dc_dataset, atom_types: list[int],
+                 cache_dir: Path | None = None, betti_scales: list[float] | None = None,
+                 topo_config: dict | None = None):
         self.atom_types = atom_types
         self.atom_types_tensor = torch.tensor(atom_types, dtype=torch.long)
-        self.persistence_img_size = persistence_img_size
+        self.betti_scales = betti_scales
+        self.topo_config = topo_config
         self.cache_dir = Path(cache_dir) if cache_dir else None
 
         self.data_list: list[Data] = []
 
-        # Check if we have cached complete graphs (MUCH faster - just 1 file load)
+        # Cache key
+        cache_suffix = ""
+        if topo_config:
+            nc = topo_config.get("n_curve_points", 20)
+            cr = topo_config.get("curve_range", (1.0, 6.0))
+            cache_suffix += f"_topo_{nc}_{cr[0]:.1f}_{cr[1]:.1f}"
+        elif betti_scales:
+            scale_str = "_".join(f"{s:.1f}" for s in betti_scales)
+            cache_suffix += f"_betti_{scale_str}"
+
         cache_file = None
         if self.cache_dir:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
-            cache_file = self.cache_dir / f"graph_data_{persistence_img_size}.pt"
+            cache_file = self.cache_dir / f"graph_data{cache_suffix}.pt"
             if cache_file.exists():
                 logger.info("Loading cached graphs from %s", cache_file)
                 self.data_list = torch.load(cache_file, weights_only=False)
                 logger.info("Loaded %d graphs from cache", len(self.data_list))
                 return
 
-        # Pre-process: build graphs + persistence images from scratch
         logger.info("Pre-processing %d molecules...", len(dc_dataset))
-
-        # KEY OPTIMIZATION: Load ALL molecules into memory ONCE
-        # This avoids 100k+ slow accesses to dc_dataset.X[i]
         logger.info("Loading molecules into memory...")
         molecules = [dc_dataset.X[i] for i in range(len(dc_dataset))]
         targets = dc_dataset.y
@@ -209,25 +235,27 @@ class GraphDataset(Dataset):
         self._preprocess(molecules, targets)
         logger.info("Pre-processing complete.")
 
-        # Save complete graphs to cache
         if self.cache_dir and cache_file:
             logger.info("Saving graphs to cache: %s", cache_file)
             torch.save(self.data_list, cache_file)
 
     def _preprocess(self, molecules: list, targets: np.ndarray):
-        """Build graphs and compute persistence images."""
-        from persim import PersistenceImager
-        from ripser import Rips
+        """Build graphs with optional topology features."""
+        from torch_topological.nn import VietorisRipsComplex
         from tqdm import tqdm
 
-        rips = Rips(maxdim=1, coeff=2, verbose=False)
-        pimgr = PersistenceImager(pixel_size=1)
-        target_shape = (self.persistence_img_size, self.persistence_img_size)
+        vr = VietorisRipsComplex(dim=1)
 
-        # Pass 1: Build graphs + collect H1 diagrams
-        diagrams_h1: list[np.ndarray] = []
-        logger.info("Building graphs and computing H1 diagrams...")
-        for i, mol_obj in enumerate(tqdm(molecules, desc="Graphs + H1", disable=False)):
+        use_topo = self.topo_config is not None
+        use_legacy_betti = not use_topo and self.betti_scales is not None and len(self.betti_scales) > 0
+
+        if use_topo:
+            from ph_transfo.augmentation.local_betti import edge_filtration_values, local_ph_features
+        elif use_legacy_betti:
+            from ph_transfo.augmentation.local_betti import local_betti_features
+
+        logger.info("Building graphs and computing persistence diagrams...")
+        for i, mol_obj in enumerate(tqdm(molecules, desc="Graphs + PH", disable=False)):
             y = torch.from_numpy(targets[i]).float()
             positions = torch.from_numpy(mol_obj.GetConformer().GetPositions()).float()
 
@@ -251,32 +279,36 @@ class GraphDataset(Dataset):
             edge_index = (torch.tensor(edge_pairs, dtype=torch.long).t().contiguous()
                          if edge_pairs else torch.zeros((2, 0), dtype=torch.long))
 
-            # Persistence diagram H1
-            coords = positions.numpy()
-            dgm = rips.fit_transform(coords)
-            h1 = dgm[1] if len(dgm) > 1 else np.empty((0, 2))
-            diagrams_h1.append(h1)
+            data = Data(x=x, pos=positions, edge_index=edge_index, y=y)
 
-            self.data_list.append(Data(x=x, pos=positions, edge_index=edge_index, y=y))
+            if use_topo:
+                # Rich local PH features → stored separately for PE-style injection
+                topo_x = local_ph_features(
+                    positions.numpy(),
+                    n_curve_points=self.topo_config.get("n_curve_points", 20),
+                    curve_range=tuple(self.topo_config.get("curve_range", (1.0, 6.0))),
+                )
+                data.topo_x = torch.from_numpy(topo_x)
 
-        # Pass 2: Fit persistence imager + compute images
-        non_empty = [d for d in diagrams_h1 if len(d) > 0]
-        if non_empty:
-            logger.info("Fitting persistence imager on %d diagrams...", len(non_empty))
-            pimgr.fit(non_empty)
+                # Edge filtration values
+                if edge_index.numel() > 0:
+                    edge_filt = edge_filtration_values(positions.numpy(), edge_index.numpy())
+                    data.edge_filt = torch.from_numpy(edge_filt)
+                else:
+                    data.edge_filt = torch.zeros(0, 1)
 
-        logger.info("Computing persistence images...")
-        for i, h1 in enumerate(tqdm(diagrams_h1, desc="PI", disable=False)):
-            if len(h1) == 0:
-                pi = torch.zeros(1, *target_shape)
-            else:
-                img = pimgr.transform([h1])[0]
-                pi = torch.from_numpy(img).float().unsqueeze(0)
-                if pi.shape[1:] != target_shape:
-                    pi = pi.unsqueeze(0)
-                    pi = torch.nn.functional.interpolate(pi, size=target_shape, mode='bilinear', align_corners=False)
-                    pi = pi.squeeze(0)
-            self.data_list[i].persistence_img = pi
+            elif use_legacy_betti:
+                betti = local_betti_features(positions.numpy(), scales=self.betti_scales)
+                betti_t = torch.from_numpy(betti).float()
+                data.x = torch.cat([data.x, betti_t], dim=1)
+
+            # Persistence diagrams via VietorisRipsComplex (H0 + H1)
+            with torch.no_grad():
+                ph_info = vr(positions)
+            data.dgm_h0 = ph_info[0].diagram if len(ph_info) > 0 else torch.empty(0, 2)
+            data.dgm_h1 = ph_info[1].diagram if len(ph_info) > 1 else torch.empty(0, 2)
+
+            self.data_list.append(data)
 
     def __len__(self):
         return len(self.data_list)

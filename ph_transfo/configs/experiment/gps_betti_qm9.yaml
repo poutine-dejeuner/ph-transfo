@@ -1,0 +1,42 @@
+# @package _global_
+
+# GPS Transformer + local Betti augmentation on QM9
+# Execute with: python ph_transfo/main.py experiment=gps_betti_qm9
+defaults:
+  - override /algorithm: gps_betti
+  - override /datamodule: qm9
+  - override /trainer: default
+
+name: gps_betti_qm9
+
+seed: 42
+
+algorithm:
+  optimizer:
+    lr: 5e-3
+    weight_decay: 1e-4
+  lr_scheduler:
+    factor: 0.5
+    patience: 20
+    min_lr: 1e-6
+
+  network:
+    hparams:
+      hidden_dim: 384
+      num_layers: 4
+      num_heads: 4
+      dropout: 0.1
+      attn_dropout: 0.1
+
+datamodule:
+  batch_size: 32
+  num_workers: 4
+  data:
+    betti_scales: [1.5, 2.5, 3.5, 5.0]
+
+trainer:
+  min_epochs: 1
+  max_epochs: 500
+  callbacks:
+    rich_progress_bar: null
+    throughput: null

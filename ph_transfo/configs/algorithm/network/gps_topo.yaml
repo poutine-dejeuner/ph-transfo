@@ -1,0 +1,14 @@
+_target_: ph_transfo.algorithms.networks.gps_transformer.GPSTransformer
+input_dim: ${instance_attr:datamodule.x_dim}
+output_dim: ${instance_attr:datamodule.y_dim}
+
+hparams:
+  hidden_dim: 64
+  num_layers: 4
+  num_heads: 4
+  dropout: 0.1
+  attn_dropout: 0.1
+  # Topology features
+  topo_dim: ${instance_attr:datamodule.topo_dim}
+  topo_pe_layers: 2
+  edge_topo: true

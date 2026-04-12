@@ -22,7 +22,7 @@ algorithm:
 
   network:
     hparams:
-      hidden_dim: 64
+      hidden_dim: 384
       num_heads: 4
       num_transformer_layers: 3
       ff_mult: 2

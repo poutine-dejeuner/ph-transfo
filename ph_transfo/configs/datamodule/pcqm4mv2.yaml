@@ -1,0 +1,7 @@
+_target_: ph_transfo.datamodules.pcqm4mv2.PCQM4Mv2DataModule
+num_workers: 4
+pin_memory: true
+shuffle: true
+data:
+  x_dim: 9
+  y_dim: 1

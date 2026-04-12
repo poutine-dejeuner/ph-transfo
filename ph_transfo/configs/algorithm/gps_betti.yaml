@@ -1,0 +1,19 @@
+defaults:
+  - network: gps_transformer
+  - optimizer: Adam
+  - _self_
+
+_target_: ph_transfo.algorithms.molecule_base.MoleculeRegressor
+_recursive_: false
+
+optimizer:
+  lr: 5e-3
+  weight_decay: 1e-4
+
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.5
+  patience: 20
+  min_lr: 1e-6
